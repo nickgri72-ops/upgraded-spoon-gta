@@ -28,6 +28,9 @@ let inCar = false;
 let canToggleCar = true;
 let bullets = [];
 
+let carSpeed = 0;
+let carRotationSpeed = 0.03;
+
 loader.load('models/player.glb', (gltf) => {
   player = gltf.scene;
   player.scale.set(1, 1, 1);
@@ -46,6 +49,37 @@ let keys = {};
 document.addEventListener("keydown", (e) => keys[e.key.toLowerCase()] = true);
 document.addEventListener("keyup", (e) => keys[e.key.toLowerCase()] = false);
 
+// CAMERA CONTROL
+let mouseDown = false;
+let prevMouseX = 0;
+let prevMouseY = 0;
+let cameraRotation = { x: 0, y: 0 };
+
+document.addEventListener("mousedown", (e) => {
+  mouseDown = true;
+  prevMouseX = e.clientX;
+  prevMouseY = e.clientY;
+});
+
+document.addEventListener("mouseup", () => {
+  mouseDown = false;
+});
+
+document.addEventListener("mousemove", (e) => {
+  if (!mouseDown) return;
+
+  const deltaX = e.clientX - prevMouseX;
+  const deltaY = e.clientY - prevMouseY;
+
+  cameraRotation.y += deltaX * 0.002;
+  cameraRotation.x += deltaY * 0.002;
+
+  cameraRotation.x = Math.max(-1.2, Math.min(1.2, cameraRotation.x));
+
+  prevMouseX = e.clientX;
+  prevMouseY = e.clientY;
+});
+
 document.addEventListener("click", () => {
   if (!player) return;
   const bullet = new THREE.Mesh(
@@ -53,7 +87,10 @@ document.addEventListener("click", () => {
     new THREE.MeshBasicMaterial({ color: 0xffff00 })
   );
   bullet.position.copy(player.position);
-  bullet.velocity = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).multiplyScalar(0.5);
+  bullet.velocity = new THREE.Vector3(0, 0, -1)
+    .applyQuaternion(camera.quaternion)
+    .multiplyScalar(0.5);
+
   scene.add(bullet);
   bullets.push(bullet);
 });
@@ -62,14 +99,14 @@ function animate() {
   requestAnimationFrame(animate);
 
   if (player && car) {
-    // ENTER
+    // ENTER CAR
     if (!inCar && keys.e && canToggleCar && player.position.distanceTo(car.position) < 2) {
       inCar = true;
       canToggleCar = false;
       setTimeout(() => canToggleCar = true, 300);
     }
 
-    // EXIT
+    // EXIT CAR
     if (inCar && keys.f && canToggleCar) {
       inCar = false;
       canToggleCar = false;
@@ -77,17 +114,29 @@ function animate() {
       setTimeout(() => canToggleCar = true, 300);
     }
 
-    // MOVE
+    // PLAYER MOVEMENT
     if (!inCar) {
       if (keys.w) player.position.z -= 0.1;
       if (keys.s) player.position.z += 0.1;
       if (keys.a) player.position.x -= 0.1;
       if (keys.d) player.position.x += 0.1;
-    } else {
-      if (keys.w) car.position.z -= 0.2;
-      if (keys.s) car.position.z += 0.2;
-      if (keys.a) car.rotation.y += 0.05;
-      if (keys.d) car.rotation.y -= 0.05;
+    } 
+    // CAR MOVEMENT (REALISTIC)
+    else {
+      if (keys.w) carSpeed = Math.min(carSpeed + 0.01, 0.4);
+      if (keys.s) carSpeed = Math.max(carSpeed - 0.01, -0.2);
+
+      if (!keys.w && !keys.s) {
+        carSpeed *= 0.98; // friction
+      }
+
+      if (keys.a) car.rotation.y += carRotationSpeed;
+      if (keys.d) car.rotation.y -= carRotationSpeed;
+
+      // move car in facing direction
+      car.position.x += Math.sin(car.rotation.y) * carSpeed;
+      car.position.z += Math.cos(car.rotation.y) * carSpeed;
+
       player.position.copy(car.position);
     }
   }
@@ -96,6 +145,18 @@ function animate() {
 
   const target = inCar ? car : player;
   if (target) {
-    camera.position.lerp(new THREE.Vector3(target.position.x, target.position.y + 5, target.position.z + 10), 0.1);
+    const offset = new THREE.Vector3(0, 5, 10);
+    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotation.y);
+
+    camera.position.lerp(
+      new THREE.Vector3(target.position.x, target.position.y + 5, target.position.z,).add(offset),
+      0.1
+    );
+
     camera.lookAt(target.position);
   }
+
+  renderer.render(scene, camera);
+}
+
+animate();
