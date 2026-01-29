@@ -47,6 +47,38 @@ body { margin:0; overflow:hidden; background:black; }
   border-radius:10px;
   background:rgba(255,200,200,0.8);
 }
+#crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+  color: white;
+  pointer-events: none;
+}
+
+#weaponWheel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.7);
+  transform: translate(-50%, -50%);
+  display: none;
+}
+
+.weapon {
+  position: absolute;
+  color: white;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.weapon:nth-child(1) { top: 15px; left: 85px; }
+.weapon:nth-child(2) { bottom: 15px; left: 75px; }
+
 </style>
 </head>
 
@@ -213,6 +245,13 @@ addEventListener("resize",()=>{
   camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
+<div id="crosshair">+</div>
+
+<div id="weaponWheel">
+  <div class="weapon" data-gun="pistol">🔫</div>
+  <div class="weapon" data-gun="rifle">🔫🔫</div>
+</div>
+
 });
 </script>
 </body>
